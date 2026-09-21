@@ -1,0 +1,201 @@
+{
+  "name": "1C bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1c810453-e889-4420-8587-00e2d6cd47da",
+      "name": "Telegram Trigger",
+      "webhookId": "59c3e7f2-75f2-404a-9f2a-137685b21932",
+      "credentials": {
+        "telegramApi": {
+          "id": "0yvGyxnjhXfnJFm7",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.document.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "6364ee92-7914-4ead-9c55-85d41d52aaf0",
+      "name": "Get a file",
+      "webhookId": "6a2bd6fa-c84d-43c5-abd6-596e59aa8b69",
+      "credentials": {
+        "telegramApi": {
+          "id": "0yvGyxnjhXfnJFm7",
+          "name": "Telegram account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "document",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.7-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.7-flash"
+        },
+        "text": "Ты — узкоспециализированный ИИ-парсер входящих первичных документов для интеграции с 1С.\nТвоя задача — проанализировать прикрепленный PDF-документ (накладную) и вернуть результаты В ИСКЛЮЧИТЕЛЬНО валидном формате JSON без каких-либо вводных слов, тегов markdown, пояснений или оберток ```json.\n\nСПЕЦИФИКАЦИЯ ПОСТАВЩИКОВ:\n\n1. ЕСЛИ ПОСТАВЩИК — ТОВ \"КПП ЦЕНТР\" / Strans:\n   - \"supplier_name\": \"ТОВ КПП ЦЕНТР\"\n   - \"article_code\": БЕРИ СТРОГО ИЗ КОЛОНКИ \"Код бренда\"! Категорически запрещено брать значения из колонок внутренних кодов или номенклатуры.\n   - \"customs_code\": Бери значение из колонки кодов УКТ ВЭД (митний код, 10 цифр).\n\n2. ЕСЛИ ПОСТАВЩИК — ТОВ \"Інтер Карс Юкрейн\" (Inter Cars):\n   - \"supplier_name\": \"ТОВ Інтер Карс Юкрейн\"\n   - \"article_code\": Бери артикул производителя / код товара из соответствующей таблицы.\n   - \"customs_code\": Извлекай 10-значный код УКТ ВЭД (митний код).\n\nОБЩИЕ ПРАВИЛА ИЗВЛЕЧЕНИЯ:\n- Покупатель: ПОЛНОСТЬЮ ИГНОРИРУЙ данные покупателя (клиента/получателя).\n- Формат чисел: Все денежные суммы и количества переводи в чистый числовой формат (float) с точкой в качестве разделителя (например, 272.95). Без пробелов, валют и знаков грн.\n- Даты: Приводи к формату ДД.ММ.ГГГГ.\n-\"name\": Очищай наименование от фраз \"УКТ ЗЕД\", кодов и служебных помет. Оставляй только чистое название запчасти (например: \"Ремкомплект шкворня\").\n-Извлекай общие итоговые суммы документа (\"Разом без ПДВ\", \"ПДВ\", \"Всього з ПДВ\") из блока итогов накладной.\n\nСТРУКТУРА ВЫХОДНОГО JSON:\n{\n  \"supplier_name\": \"Строка\",\n  \"supplier_edrpou\": \"Строка\",\n  \"document_number\": \"Строка\",\n  \"document_date\": \"Строка\",\n  \"total_sum_no_vat\": 0.00,\n  \"total_vat_amount\": 0.00,\n  \"total_document_sum\": 0.00,\n  \"items\": [\n    {\n      \"line_number\": 1,\n      \"article_code\": \"Строка\",\n      \"customs_code\": \"Строка\",\n      \"name\": \"Строка\",\n      \"unit\": \"шт\",\n      \"quantity\": 1.0,\n      \"price_no_vat\": 0.00,\n      \"sum_no_vat\": 0.00,\n      \"vat_amount\": 0.00,\n      \"total_with_vat\": 0.00\n    }\n  ]\n}",
+        "inputType": "binary",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "9d41740c-d25c-41a2-a858-6e1ba5ceae75",
+      "name": "Analyze document",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "D8BCrEAwnW7Tw40Y",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawText = $input.item.json.content.parts[0].text;\nconst cleanJson = JSON.parse(rawText);\nreturn cleanJson;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        0
+      ],
+      "id": "c7a7d203-89c3-4ce0-b3c2-ad9eddbdd0b2",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "fileName": "invoice.json"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        0
+      ],
+      "id": "f815e922-3dfe-4649-b796-2131f00f3c25",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "sendDocument",
+        "chatId": "={{ $node[\"Telegram Trigger\"].json.message.chat.id }}",
+        "binaryData": true,
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "255c6adb-9b4a-45b9-803a-64ae8805375d",
+      "name": "Send a document",
+      "webhookId": "a6ad68d9-d58c-41d8-a28f-d45c8cebb1dc",
+      "credentials": {
+        "telegramApi": {
+          "id": "0yvGyxnjhXfnJFm7",
+          "name": "Telegram account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Analyze document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze document": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Send a document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "289dc62e-406a-48f5-87ff-078fe56ddd38",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d15528fc06984d66288e058b6fdffdc3eff896af08ad4746ec5e929697f55bfd"
+  },
+  "nodeGroups": [],
+  "id": "kdUml9GTfIUiPhnx",
+  "tags": []
+}
